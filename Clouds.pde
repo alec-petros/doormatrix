@@ -2,31 +2,35 @@ class Cloud {
     float noiseTrigger;
     float noiseSpeed;
 
-    Cloud(float speed) {
+    Cloud(float speed, FFT fftLin) {
         noiseSpeed = speed;
         noiseTrigger = random(0, 1000);
     }
 
-    void draw() {
-        noiseTrigger += noiseSpeed;
+    void draw(float normalAmp) {
+        noiseTrigger += noiseSpeed + map(normalAmp, 0, 1, 0, 0.1); 
 
-        long now = millis();
-        float z = now * 0.00008;
+        float z = noiseTrigger;
 
         loadPixels();
+        float xoff = 0;
         for (int x = 0; x < width; x++) {
-            for (int y = 0; y < height; y++) {
+            float yoff = 0;
+            for (int y = height - 1; y >= 0; y--) {
 
-                float noisePoint = noise(x / 10 + noiseTrigger, y / 10 + noiseTrigger, z);
+                float noiseOne = noise(xoff, yoff, z);
+                float noiseTwo = noise(xoff, yoff, z + 10000);
 
                 color c = color(
-                    map(noisePoint, 0, 1, 80, 300),
-                    map(noisePoint, 0, 1, 200, 255),
-                    map(noisePoint, 0, 1, -100, 180)
+                    map(noiseOne, 0, 1, 80, 300),
+                    map(noiseTwo, 0, 1, 0, 255),
+                    map(normalAmp, 0, 1, 0, 360)
                 );
             
                 pixels[x + width*y] = c;
+                yoff += 0.01;
             }
+            xoff += 0.01;
         }
         updatePixels();
     }
