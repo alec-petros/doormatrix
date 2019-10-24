@@ -8,6 +8,13 @@ RingWrapper ringwrapper;
 import ddf.minim.analysis.*;
 import ddf.minim.*;
 
+
+int clrCount = 5;
+ColorStop[] temp = new ColorStop[clrCount];
+float prc;
+Gradient grd;
+ColorPalette cPalette;
+
 Minim minim;  
 AudioInput audioInput;
 BeatDetect beat;
@@ -33,15 +40,14 @@ void setup()
 
   maxValues = new float[9];
 
-  // maxValues[0] = 53.05477;
-  // maxValues[1] = 20.453335;
-  // maxValues[2] = 15.642995;
-  // maxValues[3] = 8.958029;
-  // maxValues[4] = 7.492257;
-  // maxValues[5] = 1.5066102;
-  // maxValues[6] = 0.48962182;
-  // maxValues[7] = 0.21129508;
-  // maxValues[8] = 0.039143644;
+  for (int i = 0; i < clrCount; ++i) {
+    prc = i == 0 ? 0 : i == clrCount - 1 ? 1 : random(1);
+    temp[i] = new ColorStop(prc,
+      composeclr(random(0, 1), random(0, 1), random(0, 1), 1));
+    }
+  grd = new Gradient(temp);
+
+  cPalette = new ColorPalette(color(#00FCFA), color(#FC00F9), color(#E8FFEA));
 
   maxValues[0] = 121.5942;
   maxValues[1] = 59.74217;
@@ -55,8 +61,7 @@ void setup()
 
   // Connect to the local instance of fcserver. You can change this line to connect to another computer's fcserver
   opc = new OPC(this, "fade.local", 7890);
-    // opc = new OPC(this, "127.0.0.1", 7890);
-   //opc = new OPC(this, "192.168.1.7", 7890);
+  // opc = new OPC(this, "127.0.0.1", 7890);
   
   // opc.setColorCorrection(2.5, 2, 2, 2);
 
@@ -108,9 +113,9 @@ void setup()
   // this should result in 30 averages
   fftLog.logAverages( 100, 1 );
   
-  cloud = new Cloud(0.0005, fftLin);
+  cloud = new Cloud(0.0005, fftLin, cPalette);
 
-  sparkler = new Sparkler();
+  sparkler = new Sparkler(cPalette);
 
   ringwrapper = new RingWrapper();
 
@@ -145,32 +150,24 @@ void draw() {
     int yDiff = height / fftLog.avgSize();
     int yTop = yDiff * i;
     int yBot = yDiff * (i + 1);
-
-    // fill(0, map(fftSmoothers[i].value(), 0, 10, 0, 255), 255);
-    // rect(0, yTop, width, yDiff);
   }
 
   // draw bass
   fftSmoothers[0].update(fftLog.getAvg(0));
   float bassAmp = fftSmoothers[0].normalValue();
-  // fill(map(bassAmp, 0, 1, 0, 255), map(bassAmp, 0, 1, 0, 255), 0);
-  // rect(0, 0, width, height);
-
   cloud.draw(bassAmp);
 
 
   // draw mids
   fftSmoothers[3].update(fftLog.getAvg(3));
   float midAmp = fftSmoothers[3].normalValue();
-  // fill(255, 0, 255);
-  // rect(0, 0, width, map(midAmp, 0, 1, 0, height));
   sparkler.draw(midAmp);
 
+  // don't delete this, it's useful until i write a better solution
   // println(fftSmoothers[0].maxVal(), fftSmoothers[1].maxVal(), fftSmoothers[2].maxVal(), fftSmoothers[3].maxVal(), fftSmoothers[4].maxVal(), fftSmoothers[5].maxVal(), fftSmoothers[6].maxVal(), fftSmoothers[7].maxVal());
+
   if (beat.isKick()) {
-    // fill(255, 0, 255);
     ringwrapper.newRing(bassAmp);
-    // rect(0, 0, width, height);
   }
   ringwrapper.draw();
 }

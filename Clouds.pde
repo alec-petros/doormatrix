@@ -1,10 +1,12 @@
 class Cloud {
     float noiseTrigger;
     float noiseSpeed;
+    ColorPalette cPalette;
 
-    Cloud(float speed, FFT fftLin) {
+    Cloud(float speed, FFT fftLin, ColorPalette palette) {
         noiseSpeed = speed;
         noiseTrigger = random(0, 1000);
+        cPalette = palette;
     }
 
     void draw(float normalAmp) {
@@ -21,11 +23,13 @@ class Cloud {
                 float noiseOne = noise(xoff, yoff, z);
                 float noiseTwo = noise(xoff, yoff, z + 10000);
 
-                color c = color(
-                    map(noiseOne, 0, 1, 80, 300),
-                    map(noiseTwo, 0, 1, 0, 255),
-                    map(normalAmp, 0, 1, 0, 360)
-                );
+                // color c = color(
+                //     map(noiseOne, 0, 1, 80, 300),
+                //     map(noiseTwo, 0, 1, 0, 255),
+                //     map(normalAmp, 0, 1, 0, 360)
+                // );
+
+                color c = lerpColor(cPalette.getPrimary(noiseOne), cPalette.getPrimary(noiseTwo), normalAmp);
             
                 pixels[x + width*y] = c;
                 yoff += 0.01;

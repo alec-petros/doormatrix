@@ -29,6 +29,13 @@ RingWrapper ringwrapper;
 
 
 
+
+int clrCount = 5;
+ColorStop[] temp = new ColorStop[clrCount];
+float prc;
+Gradient grd;
+ColorPalette cPalette;
+
 Minim minim;  
 AudioInput audioInput;
 BeatDetect beat;
@@ -54,15 +61,14 @@ public void setup()
 
   maxValues = new float[9];
 
-  // maxValues[0] = 53.05477;
-  // maxValues[1] = 20.453335;
-  // maxValues[2] = 15.642995;
-  // maxValues[3] = 8.958029;
-  // maxValues[4] = 7.492257;
-  // maxValues[5] = 1.5066102;
-  // maxValues[6] = 0.48962182;
-  // maxValues[7] = 0.21129508;
-  // maxValues[8] = 0.039143644;
+  for (int i = 0; i < clrCount; ++i) {
+    prc = i == 0 ? 0 : i == clrCount - 1 ? 1 : random(1);
+    temp[i] = new ColorStop(prc,
+      composeclr(random(0, 1), random(0, 1), random(0, 1), 1));
+    }
+  grd = new Gradient(temp);
+
+  cPalette = new ColorPalette(color(0xff00FCFA), color(0xffFC00F9), color(0xffE8FFEA));
 
   maxValues[0] = 121.5942f;
   maxValues[1] = 59.74217f;
@@ -76,8 +82,7 @@ public void setup()
 
   // Connect to the local instance of fcserver. You can change this line to connect to another computer's fcserver
   opc = new OPC(this, "fade.local", 7890);
-    // opc = new OPC(this, "127.0.0.1", 7890);
-   //opc = new OPC(this, "192.168.1.7", 7890);
+  // opc = new OPC(this, "127.0.0.1", 7890);
   
   // opc.setColorCorrection(2.5, 2, 2, 2);
 
@@ -129,9 +134,9 @@ public void setup()
   // this should result in 30 averages
   fftLog.logAverages( 100, 1 );
   
-  cloud = new Cloud(0.0005f, fftLin);
+  cloud = new Cloud(0.0005f, fftLin, cPalette);
 
-  sparkler = new Sparkler();
+  sparkler = new Sparkler(cPalette);
 
   ringwrapper = new RingWrapper();
 
@@ -166,32 +171,24 @@ public void draw() {
     int yDiff = height / fftLog.avgSize();
     int yTop = yDiff * i;
     int yBot = yDiff * (i + 1);
-
-    // fill(0, map(fftSmoothers[i].value(), 0, 10, 0, 255), 255);
-    // rect(0, yTop, width, yDiff);
   }
 
   // draw bass
   fftSmoothers[0].update(fftLog.getAvg(0));
   float bassAmp = fftSmoothers[0].normalValue();
-  // fill(map(bassAmp, 0, 1, 0, 255), map(bassAmp, 0, 1, 0, 255), 0);
-  // rect(0, 0, width, height);
-
   cloud.draw(bassAmp);
 
 
   // draw mids
   fftSmoothers[3].update(fftLog.getAvg(3));
   float midAmp = fftSmoothers[3].normalValue();
-  // fill(255, 0, 255);
-  // rect(0, 0, width, map(midAmp, 0, 1, 0, height));
   sparkler.draw(midAmp);
 
+  // don't delete this, it's useful until i write a better solution
   // println(fftSmoothers[0].maxVal(), fftSmoothers[1].maxVal(), fftSmoothers[2].maxVal(), fftSmoothers[3].maxVal(), fftSmoothers[4].maxVal(), fftSmoothers[5].maxVal(), fftSmoothers[6].maxVal(), fftSmoothers[7].maxVal());
+
   if (beat.isKick()) {
-    // fill(255, 0, 255);
     ringwrapper.newRing(bassAmp);
-    // rect(0, 0, width, height);
   }
   ringwrapper.draw();
 }
@@ -244,10 +241,12 @@ class Box {
 class Cloud {
     float noiseTrigger;
     float noiseSpeed;
+    ColorPalette cPalette;
 
-    Cloud(float speed, FFT fftLin) {
+    Cloud(float speed, FFT fftLin, ColorPalette palette) {
         noiseSpeed = speed;
         noiseTrigger = random(0, 1000);
+        cPalette = palette;
     }
 
     public void draw(float normalAmp) {
@@ -264,11 +263,13 @@ class Cloud {
                 float noiseOne = noise(xoff, yoff, z);
                 float noiseTwo = noise(xoff, yoff, z + 10000);
 
-                int c = color(
-                    map(noiseOne, 0, 1, 80, 300),
-                    map(noiseTwo, 0, 1, 0, 255),
-                    map(normalAmp, 0, 1, 0, 360)
-                );
+                // color c = color(
+                //     map(noiseOne, 0, 1, 80, 300),
+                //     map(noiseTwo, 0, 1, 0, 255),
+                //     map(normalAmp, 0, 1, 0, 360)
+                // );
+
+                int c = lerpColor(cPalette.getPrimary(noiseOne), cPalette.getPrimary(noiseTwo), normalAmp);
             
                 pixels[x + width*y] = c;
                 yoff += 0.01f;
@@ -277,6 +278,79 @@ class Cloud {
         }
         updatePixels();
     }
+}
+// Allows us to define a primary and secondary gradient, currently with only two color stops, and an accent
+// TODO: Accept an array of colors for our gradients
+
+class ColorPalette {
+    int primaryX, primaryY, secX, secY, accent;
+    
+    ColorPalette(int initPrimaryX, int initPrimaryY, int initAccent) {
+        this(initPrimaryX, initPrimaryY, color(0, 0, 0), color(0, 0, 0), initAccent);
+    }
+
+    ColorPalette(int initPrimaryX, int initPrimaryY, int initSecX, int initSecY, int initAccent) {
+        primaryX = initPrimaryX;
+        primaryY = initPrimaryY;
+        secX = initSecX;
+        secY = initSecY;
+        accent = initAccent;
+    }
+    
+    public void setPrimary(int newPrimaryX, int newPrimaryY) {
+        primaryX = newPrimaryX;
+        primaryY = newPrimaryY;
+    }
+
+    public void setSecondary(int newSecondaryX, int newSecondaryY) {
+        secX = newSecondaryX;
+        secY = newSecondaryY;
+    }
+    
+    public int getPrimary(float amt) {
+        return lerpColor(primaryX, primaryY, amt);
+    }
+
+    public int getSecondary(float amt) {
+        return lerpColor(secX, secY, amt);
+    }
+    
+    public int accent() {
+        return accent;
+    }
+}
+// see @behrealjj's fantastic Medium article from which I ripped this
+// https://medium.com/@behreajj/color-gradients-in-processing-v-2-0-e5c0b87cdfd2
+
+class ColorStop implements Comparable<ColorStop> {
+  static final float TOLERANCE = 0.09f;
+  float percent;
+  int clr;
+
+  ColorStop(int colorMode, float percent, float[] arr) {
+    this(colorMode, percent, arr[0], arr[1], arr[2],
+      arr.length == 4 ? arr[3] : 1.0f);
+  }
+
+  ColorStop(int colorMode, float percent, float x, float y, float z, float w) {
+    this(percent, colorMode == HSB ? composeclr(hsbToRgb(x, y, z, w))
+      : composeclr(x, y, z, w));
+  }
+
+  ColorStop(float percent, int clr) {
+    this.percent = constrain(percent, 0.0f, 1.0f);
+    this.clr = clr;
+  }
+
+  public boolean approxPercent(ColorStop cs, float tolerance) {
+    return abs(percent - cs.percent) < tolerance;
+  }
+
+  // Mandated by the interface Comparable<ColorStop>.
+  // Permits color stops to be sorted by Collections.sort.
+  public int compareTo(ColorStop cs) {
+    return percent > cs.percent ? 1 : percent < cs.percent ? -1 : 0;
+  }
 }
 class Controller {
     Pulse[] pulses;
@@ -310,6 +384,159 @@ class Controller {
         }
         box.draw();
     }
+}
+// see @behrealjj's fantastic Medium article from which I ripped this
+// https://medium.com/@behreajj/color-gradients-in-processing-v-2-0-e5c0b87cdfd2
+
+class Gradient {
+  static final int DEFAULT_COLOR_MODE = RGB;
+  ArrayList<ColorStop> colorStops = new ArrayList<ColorStop>();
+
+  Gradient() {
+    this(0xff000000, 0xffffffff);
+  }
+
+  // Creates equidistant color stops.
+  Gradient(int... colors) {
+    int sz = colors.length;
+    float szf = sz <= 1.0f ? 1.0f : sz - 1.0f;
+    for (int i = 0; i < sz; ++i) {
+      colorStops.add(new ColorStop(i / szf, colors[i]));
+    }
+  }
+
+  // Creates equidistant color stops.
+  Gradient(int colorMode, float[]... colors) {
+    int sz = colors.length;
+    float szf = sz <= 1.0f ? 1.0f : sz - 1.0f;
+    for (int i = 0; i < sz; ++i) {
+      colorStops.add(new ColorStop(colorMode, i / szf, colors[i]));
+    }
+  }
+
+  Gradient(ColorStop... colorStops) {
+    int sz = colorStops.length;
+    for (int i = 0; i < sz; ++i) {
+      this.colorStops.add(colorStops[i]);
+    }
+    java.util.Collections.sort(this.colorStops);
+    remove();
+  }
+
+  Gradient(ArrayList<ColorStop> colorStops) {
+    this.colorStops = colorStops;
+    java.util.Collections.sort(this.colorStops);
+    remove();
+  }
+
+  public void add(int colorMode, float percent, float[] arr) {
+    add(new ColorStop(colorMode, percent, arr));
+  }
+
+  public void add(int colorMode, float percent,
+    float x, float y, float z, float w) {
+    add(new ColorStop(colorMode, percent, x, y, z, w));
+  }
+
+  public void add(final float percent, final int clr) {
+    add(new ColorStop(percent, clr));
+  }
+
+  public void add(final ColorStop colorStop) {
+    for (int sz = colorStops.size(), i = sz - 1; i > 0; --i) {
+      ColorStop current = colorStops.get(i);
+      if (current.approxPercent(colorStop, ColorStop.TOLERANCE)) {
+        println(current, "will be replaced by", colorStop);
+        colorStops.remove(current);
+      }
+    }
+    colorStops.add(colorStop);
+    java.util.Collections.sort(colorStops);
+  }
+
+  public int eval(final float step) {
+    return eval(step, DEFAULT_COLOR_MODE);
+  }
+
+  public int eval(final float step, final int colorMode) {
+    int sz = colorStops.size();
+
+    // Exit from the function early whenever possible.
+    if (sz == 0) {
+      return 0x00000000;
+    } else if (sz == 1 || step < 0.0f) {
+      return colorStops.get(0).clr;
+    } else if (step >= 1.0f) {
+      return colorStops.get(sz - 1).clr;
+    }
+
+    ColorStop currStop;
+    ColorStop prevStop;
+    float currPercent, scaledst;
+    for (int i = 0; i < sz; ++i) {
+      currStop = colorStops.get(i);
+      currPercent = currStop.percent;
+
+      if (step < currPercent) {
+
+        // These can be declared within the for-loop because
+        // if step < currPercent, the function will return
+        // and no more iterations will be executed.
+        float[] originclr = new float[4];
+        float[] destclr = new float[4];
+        float[] rsltclr = new float[4];
+
+        // If not at the first stop in the gradient (i == 0),
+        // then get the previous.
+        prevStop = colorStops.get(i - 1 < 0 ? 0 : i - 1);
+
+        scaledst = step - currPercent;
+        float denom = prevStop.percent - currPercent;
+        if (denom != 0) {
+          scaledst /= denom;
+        }
+
+        // Assumes that color stops' colors are ints. They could
+        // also be float[] arrays, in which case they wouldn't
+        // need to be decomposed.
+        switch(colorMode) {
+        case HSB:
+          rgbToHsb(currStop.clr, originclr);
+          rgbToHsb(prevStop.clr, destclr);
+          smootherStepHsb(originclr, destclr, scaledst, rsltclr);
+          return composeclr(hsbToRgb(rsltclr));
+        case RGB:
+          decomposeclr(currStop.clr, originclr);
+          decomposeclr(prevStop.clr, destclr);
+          smootherStepRgb(originclr, destclr, scaledst, rsltclr);
+          return composeclr(rsltclr);
+        }
+      }
+    }
+    return colorStops.get(sz - 1).clr;
+  }
+
+  public boolean remove(ColorStop colorStop) {
+    return colorStops.remove(colorStop);
+  }
+
+  public ColorStop remove(int i) {
+    return colorStops.remove(i);
+  }
+
+  public int remove() {
+    int removed = 0;
+    for (int sz = colorStops.size(), i = sz - 1; i > 0; --i) {
+      ColorStop current = colorStops.get(i);
+      ColorStop prev = colorStops.get(i - 1);
+      if (current.approxPercent(prev, ColorStop.TOLERANCE)) {
+        println(current, "removed, as it was too close to", prev);
+        colorStops.remove(current);
+        removed++;
+      }
+    }
+    return removed;
+  }
 }
 /*
  * Simple Open Pixel Control client for Processing,
@@ -802,29 +1029,33 @@ class Smoother {
 class Sparkle {
     PVector velocity, loc;
     Smoother size;
+    int c;
 
-    Sparkle(PVector location, PVector speed) {
+    Sparkle(PVector location, PVector speed, int fillColor) {
         loc = location;
         velocity = speed;
         size = new Smoother(15.0f, 1);
+        c = fillColor;
     }
 
     public void draw(float midAmp) {
         size.update(midAmp);
         loc = PVector.add(loc, velocity);
         noStroke();
-        fill(200, 0, 255);
+        fill(c);
         circle(loc.x, loc.y, map(size.value(), 0, 1, 0, 50));
     }
 }
 class Sparkler {
     Sparkle[] sparkles = new Sparkle[30];
     int index;
+    ColorPalette cPalette;
 
-    Sparkler() {
+    Sparkler(ColorPalette palette) {
         index = 0;
+        cPalette = palette;
         for (int i = 0; i < sparkles.length; i++) {
-            sparkles[i] = new Sparkle(new PVector(width / 2, height / 2), new PVector(3, 3));
+            sparkles[i] = new Sparkle(new PVector(width / 2, height / 2), new PVector(3, 3), cPalette.accent());
         }
     }
 
@@ -832,7 +1063,7 @@ class Sparkler {
         if (midAmp > 0.5f) {
             float sparkleX = random(width / 4, (width / 4) * 3);
             float sparkleY = random(height / 4, (height / 4) * 3);
-            sparkles[index] = new Sparkle(new PVector(sparkleX, sparkleY), new PVector(random(-1, 1), random(-1, 1)));
+            sparkles[index] = new Sparkle(new PVector(sparkleX, sparkleY), new PVector(random(-1, 1), random(-1, 1)), cPalette.accent());
             index++;
         }
         for (int i = 0; i < sparkles.length; i++) {
@@ -879,6 +1110,195 @@ class Sweep {
             popMatrix();
         }
     }
+}
+// see @behrealjj's fantastic Medium article from which I ripped this
+// https://medium.com/@behreajj/color-gradients-in-processing-v-2-0-e5c0b87cdfd2
+
+public int composeclr(float[] in) {
+  return composeclr(in[0], in[1], in[2], in[3]);
+}
+
+// Assumes that RGBA are in range 0 .. 1.
+public int composeclr(float red, float green, float blue, float alpha) {
+  return round(alpha * 255.0f) << 24
+    | round(red * 255.0f) << 16
+    | round(green * 255.0f) << 8
+    | round(blue * 255.0f);
+}
+
+public float[] decomposeclr(int clr) {
+  return decomposeclr(clr, new float[] { 0.0f, 0.0f, 0.0f, 1.0f });
+}
+
+// Assumes that out has 4 elements.
+// 1.0 / 255.0 = 0.003921569
+public float[] decomposeclr(int clr, float[] out) {
+  out[3] = (clr >> 24 & 0xff) * 0.003921569f;
+  out[0] = (clr >> 16 & 0xff) * 0.003921569f;
+  out[1] = (clr >> 8 & 0xff) * 0.003921569f;
+  out[2] = (clr & 0xff) * 0.003921569f;
+  return out;
+}
+
+public float smootherStep(float st) {
+  return st * st * st * (st * (st * 6.0f - 15.0f) + 10.0f);
+}
+
+public float[] smootherStepRgb(float[] a, float[] b, float st, float[] out) {
+  float eval = smootherStep(st);
+  out[0] = a[0] + eval * (b[0] - a[0]);
+  out[1] = a[1] + eval * (b[1] - a[1]);
+  out[2] = a[2] + eval * (b[2] - a[2]);
+  out[3] = a[3] + eval * (b[3] - a[3]);
+  return out;
+}
+
+public float[] smootherStepHsb(float[] a, float[] b, float st, float[] out) {
+
+  // Find difference in hues.
+  float huea = a[0];
+  float hueb = b[0];
+  float delta = hueb - huea;
+
+  // Prefer shortest distance.
+  if (delta < -0.5f) {
+    hueb += 1.0f;
+  } else if (delta > 0.5f) {
+    huea += 1.0f;
+  }
+
+  float eval = smootherStep(st);
+
+  // The two hues may be outside of 0 .. 1 range,
+  // so modulate by 1.
+  out[0] = (huea + eval * (hueb - huea)) % 1;
+  out[1] = a[1] + eval * (b[1] - a[1]);
+  out[2] = a[2] + eval * (b[2] - a[2]);
+  out[3] = a[3] + eval * (b[3] - a[3]);
+  return out;
+}
+// see @behrealjj's fantastic Medium article from which I ripped this
+// https://medium.com/@behreajj/color-gradients-in-processing-v-2-0-e5c0b87cdfd2
+
+public float[] hsbToRgb(float[] in) {
+  float[] out = new float[] { 0.0f, 0.0f, 0.0f, 1.0f };
+  return hsbToRgb(in[0], in[1], in[2], in[3], out);
+}
+
+public float[] hsbToRgb(float[] in, float[] out) {
+  if (in.length == 3) {
+    return hsbToRgb(in[0], in[1], in[2], 1.0f, out);
+  } else if (in.length == 4) {
+    return hsbToRgb(in[0], in[1], in[2], in[3], out);
+  }
+  return out;
+}
+
+public float[] hsbToRgb(float hue, float sat, float bri, float alpha) {
+  float[] out = new float[] { 0.0f, 0.0f, 0.0f, 1.0f };
+  return hsbToRgb(hue, sat, bri, alpha, out);
+}
+
+public float[] hsbToRgb(float hue, float sat, float bri, float alpha, float[] out) {
+  if (sat == 0.0f) {
+
+    // 0.0 saturation is grayscale, so all values are equal.
+    out[0] = out[1] = out[2] = bri;
+  } else {
+
+    // Divide color wheel into 6 sectors.
+    // Scale up hue to 6, convert to sector index.
+    float h = hue * 6.0f;
+    int sector = PApplet.parseInt(h);
+
+    // Depending on the sector, three tints will
+    // be distributed among R, G, B channels.
+    float tint1 = bri * (1.0f - sat);
+    float tint2 = bri * (1.0f - sat * (h - sector));
+    float tint3 = bri * (1.0f - sat * (1.0f + sector - h));
+
+    switch (sector) {
+    case 1:
+      out[0] = tint2; out[1] = bri; out[2] = tint1;
+      break;
+    case 2:
+      out[0] = tint1; out[1] = bri; out[2] = tint3;
+      break;
+    case 3:
+      out[0] = tint1; out[1] = tint2; out[2] = bri;
+      break;
+    case 4:
+      out[0] = tint3; out[1] = tint1; out[2] = bri;
+      break;
+    case 5:
+      out[0] = bri; out[1] = tint1; out[2] = tint2;
+      break;
+    default:
+      out[0] = bri; out[1] = tint3; out[2] = tint1;
+    }
+  }
+
+  out[3] = alpha;
+  return out;
+}
+// see @behrealjj's fantastic Medium article from which I ripped this
+// https://medium.com/@behreajj/color-gradients-in-processing-v-2-0-e5c0b87cdfd2
+
+public float[] rgbToHsb(int clr) {
+  return rgbToHsb(clr, new float[] { 0.0f, 0.0f, 0.0f, 1.0f });
+}
+
+public float[] rgbToHsb(int clr, float[] out) {
+  return rgbToHsb((clr >> 16 & 0xff) * 0.003921569f,
+    (clr >> 8 & 0xff) * 0.003921569f,
+    (clr & 0xff) * 0.003921569f,
+    (clr >> 24 & 0xff) * 0.003921569f, out);
+}
+
+public float[] rgbToHsb(float[] in) {
+  return rgbToHsb(in, new float[] { 0.0f, 0.0f, 0.0f, 1.0f });
+}
+
+public float[] rgbToHsb(float[] in, float[] out) {
+  if (in.length == 3) {
+    return rgbToHsb(in[0], in[1], in[2], 1.0f, out);
+  } else if (in.length == 4) {
+    return rgbToHsb(in[0], in[1], in[2], in[3], out);
+  }
+  return out;
+}
+
+public float[] rgbToHsb(float red, float green, float blue, float alpha, float[] out) {
+
+  // Find highest and lowest values.
+  float max = max(red, green, blue);
+  float min = min(red, green, blue);
+
+  // Find the difference between max and min.
+  float delta = max - min;
+
+  // Calculate hue.
+  float hue = 0.0f;
+  if (delta != 0.0f) {
+    if (red == max) {
+      hue = (green - blue) / delta;
+    } else if (green == max) {
+      hue = 2.0f + (blue - red) / delta;
+    } else {
+      hue = 4.0f + (red - green) / delta;
+    }
+
+    hue /= 6.0f;
+    if (hue < 0.0f) {
+      hue += 1.0f;
+    }
+  }
+
+  out[0] = hue;
+  out[1] = max == 0.0f ? 0.0f : (max - min) / max;
+  out[2] = max;
+  out[3] = alpha;
+  return out;
 }
   public void settings() {  size(480, 256); }
   static public void main(String[] passedArgs) {
