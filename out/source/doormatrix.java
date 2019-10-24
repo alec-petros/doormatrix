@@ -30,10 +30,10 @@ RingWrapper ringwrapper;
 
 
 
-int clrCount = 5;
-ColorStop[] temp = new ColorStop[clrCount];
-float prc;
-Gradient grd;
+// int clrCount = 5;
+// ColorStop[] temp = new ColorStop[clrCount];
+// float prc;
+// Gradient grd;
 ColorPalette cPalette;
 
 Minim minim;  
@@ -61,12 +61,12 @@ public void setup()
 
   maxValues = new float[9];
 
-  for (int i = 0; i < clrCount; ++i) {
-    prc = i == 0 ? 0 : i == clrCount - 1 ? 1 : random(1);
-    temp[i] = new ColorStop(prc,
-      composeclr(random(0, 1), random(0, 1), random(0, 1), 1));
-    }
-  grd = new Gradient(temp);
+  // for (int i = 0; i < clrCount; ++i) {
+  //   prc = i == 0 ? 0 : i == clrCount - 1 ? 1 : random(1);
+  //   temp[i] = new ColorStop(prc,
+  //     composeclr(random(0, 1), random(0, 1), random(0, 1), 1));
+  //   }
+  // grd = new Gradient(temp);
 
   cPalette = new ColorPalette(color(0xff00FCFA), color(0xffFC00F9), color(0xffE8FFEA));
 
@@ -109,7 +109,7 @@ public void setup()
 
   controller = new Controller(pulses);
   
-  colorMode(HSB, 255);
+  colorMode(RGB, 255);
   
   minim = new Minim(this);
   audioInput = minim.getLineIn();
@@ -270,6 +270,7 @@ class Cloud {
                 // );
 
                 int c = lerpColor(cPalette.getPrimary(noiseOne), cPalette.getPrimary(noiseTwo), normalAmp);
+                c.rgba[3] = normalAmp;
             
                 pixels[x + width*y] = c;
                 yoff += 0.01f;
@@ -283,36 +284,33 @@ class Cloud {
 // TODO: Accept an array of colors for our gradients
 
 class ColorPalette {
-    int primaryX, primaryY, secX, secY, accent;
+    SimpleGradient primary, secondary;
+    int accent;
     
-    ColorPalette(int initPrimaryX, int initPrimaryY, int initAccent) {
-        this(initPrimaryX, initPrimaryY, color(0, 0, 0), color(0, 0, 0), initAccent);
+    ColorPalette(int initPrimaryX, int initPrimaryY, int initSecX, int initSecY, int initAccent) {
+        primary = new SimpleGradient(color(initPrimaryX), color(initPrimaryY));
+        secondary = new SimpleGradient(initSecX, initSecY);
+        accent = initAccent;
     }
 
-    ColorPalette(int initPrimaryX, int initPrimaryY, int initSecX, int initSecY, int initAccent) {
-        primaryX = initPrimaryX;
-        primaryY = initPrimaryY;
-        secX = initSecX;
-        secY = initSecY;
+    ColorPalette(int initPrimaryX, int initPrimaryY, int initAccent) {
+        primary = new SimpleGradient(color(initPrimaryX), color(initPrimaryY));
+        secondary = new SimpleGradient(color(0, 0, 0), color(255, 255, 255));
+        accent = initAccent;
+    }
+
+    ColorPalette(SimpleGradient initPrimary, SimpleGradient initSecondary, int initAccent) {
+        primary = initPrimary;
+        secondary = initSecondary;
         accent = initAccent;
     }
     
-    public void setPrimary(int newPrimaryX, int newPrimaryY) {
-        primaryX = newPrimaryX;
-        primaryY = newPrimaryY;
-    }
-
-    public void setSecondary(int newSecondaryX, int newSecondaryY) {
-        secX = newSecondaryX;
-        secY = newSecondaryY;
-    }
-    
     public int getPrimary(float amt) {
-        return lerpColor(primaryX, primaryY, amt);
+        return primary.get(amt);
     }
 
     public int getSecondary(float amt) {
-        return lerpColor(secX, secY, amt);
+        return secondary.get(amt);
     }
     
     public int accent() {
@@ -992,6 +990,29 @@ class RingWrapper {
         if (ringIndex >= rings.length) {
             ringIndex = 0;
         }
+    }
+}
+// Allows us to define a primary and secondary gradient, currently with only two color stops, and an accent
+// TODO: Accept an array of colors for our gradients
+
+class SimpleGradient {
+    int x, y;
+    
+    SimpleGradient(int initX, int initY) {
+        x = initX;
+        y = initY;
+    }
+    
+    public void setX(int newX) {
+        x = newX;
+    }
+
+    public void setY(int newY) {
+        y = newY;
+    }
+    
+    public int get(float amt) {
+        return lerpColor(x, y, amt);
     }
 }
 class Smoother {

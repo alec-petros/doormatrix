@@ -2,12 +2,18 @@
 // TODO: Accept an array of colors for our gradients
 
 class ColorPalette {
-    SimpleGradient primary, secondary, accent;
+    SimpleGradient primary, secondary;
     color accent;
     
     ColorPalette(color initPrimaryX, color initPrimaryY, color initSecX, color initSecY, color initAccent) {
-        primary = new SimpleGradient(initPrimaryX, initPrimaryY);
-        secondary = new SimpleGradient(initSecondaryX, initSecondaryY);
+        primary = new SimpleGradient(color(initPrimaryX), color(initPrimaryY));
+        secondary = new SimpleGradient(initSecX, initSecY);
+        accent = initAccent;
+    }
+
+    ColorPalette(color initPrimaryX, color initPrimaryY, color initAccent) {
+        primary = new SimpleGradient(color(initPrimaryX), color(initPrimaryY));
+        secondary = new SimpleGradient(color(0, 0, 0), color(255, 255, 255));
         accent = initAccent;
     }
 

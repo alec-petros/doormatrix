@@ -9,10 +9,10 @@ import ddf.minim.analysis.*;
 import ddf.minim.*;
 
 
-int clrCount = 5;
-ColorStop[] temp = new ColorStop[clrCount];
-float prc;
-Gradient grd;
+// int clrCount = 5;
+// ColorStop[] temp = new ColorStop[clrCount];
+// float prc;
+// Gradient grd;
 ColorPalette cPalette;
 
 Minim minim;  
@@ -40,12 +40,12 @@ void setup()
 
   maxValues = new float[9];
 
-  for (int i = 0; i < clrCount; ++i) {
-    prc = i == 0 ? 0 : i == clrCount - 1 ? 1 : random(1);
-    temp[i] = new ColorStop(prc,
-      composeclr(random(0, 1), random(0, 1), random(0, 1), 1));
-    }
-  grd = new Gradient(temp);
+  // for (int i = 0; i < clrCount; ++i) {
+  //   prc = i == 0 ? 0 : i == clrCount - 1 ? 1 : random(1);
+  //   temp[i] = new ColorStop(prc,
+  //     composeclr(random(0, 1), random(0, 1), random(0, 1), 1));
+  //   }
+  // grd = new Gradient(temp);
 
   cPalette = new ColorPalette(color(#00FCFA), color(#FC00F9), color(#E8FFEA));
 

@@ -4,7 +4,7 @@
 class SimpleGradient {
     color x, y;
     
-    ColorPalette(color initX, color initY) {
+    SimpleGradient(color initX, color initY) {
         x = initX;
         y = initY;
     }
@@ -15,10 +15,6 @@ class SimpleGradient {
 
     void setY(color newY) {
         y = newY;
-    }
-
-    color get() {
-        this(0.0);
     }
     
     color get(float amt) {
